@@ -1,0 +1,337 @@
+---
+title: "COVID-19 clinicaltrials.gov tracker"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+---
+
+The spread of COVID-19 leads to an unprecedented research effort to seek effective routine diagnostics and treatments, included vaccines.
+
+This dashboard is an attempt to keep track of this global action by means of a visual reporting of what we have in clinicaltrials.gov (updated April 9, 2020).
+
+
+```{r}
+library(tidyverse)
+library(flexdashboard)
+library(RColorBrewer)
+
+pal.n <- brewer.pal(n = 5, "Accent")[1]
+pal.Study.Type <- brewer.pal(n = 3, "Accent") 
+pal.Funded.Bys <- brewer.pal(n = 12, "Blues")[c(4,6,7)] 
+
+prj.dir <- "C:/Users/E619545/OneDrive - UCB/Desktop/misc/data_viz/covid19_nct_tracker"
+
+d0 <- read.csv(file.path(prj.dir, "dataset_200408.csv"), header = T, sep=",")
+               
+d1 <- d0 %>%
+  mutate(
+    Study.Type.b = case_when(
+      !Study.Type %in% c('Interventional', 'Observational') ~ 'Expanded Access',
+      Study.Type == 'Observational' ~ 'Observational',
+      Study.Type == 'Interventional' ~ 'Interventional'),
+    Phases = case_when(
+      Phases %in% c('Early Phase 1', 'Phase 1') ~ 'Phase 1',
+      Phases == 'Phase 1|Phase 2' ~ 'Phase 1|2',
+      Phases == 'Phase 2' ~ 'Phase 2',
+      Phases == 'Phase 2|Phase 3' ~ 'Phase 2|3',
+      Phases == 'Phase 3' ~ 'Phase 3',
+      Phases == 'Phase 4' ~ 'Phase 4',
+      Phases == 'Not Applicable' ~ 'Not Applicable'),
+    Phases = fct_relevel(Phases, "Not Applicable", after = Inf),
+    Funded.Bys.b = case_when(
+      Funded.Bys %in% c('Industry', 'Industry|Other') ~ 'Industry',
+      Funded.Bys %in% c('Other', 'Other|Industry', "Other|NIH", "NIH", "U.S. Fed") ~ 'Other')
+    )
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Studies found for COVID-19
+
+```{r}
+n <- dim(d0)[1]
+valueBox(n, icon = "fa-tablets", color = pal.n)
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Interventional
+
+```{r}
+int <- table(d1$Study.Type.b)['Interventional']
+valueBox(int, icon = "fa-tablets", color = pal.Funded.Bys[3])
+```
+
+### Observational
+
+```{r}
+obs <- table(d1$Study.Type.b)['Observational']
+valueBox(obs, icon = "fa-stethoscope", color = pal.Study.Type[2])
+```
+
+### Expanded Access
+
+```{r}
+exp <- table(d1$Study.Type.b)['Expanded Access']
+valueBox(exp, icon = "fa-users", color = pal.Study.Type[2])
+```
+
+Row
+-----------------------------------------------------------------------
+
+### Vaccines
+
+```{r}
+vaccine <- sum(str_detect(d0$Interventions,"accin"))
+valueBox(vaccine, 
+         # icon = "fa-tablets", 
+         color = pal.Funded.Bys[3])
+```
+
+### Diagnostics
+
+```{r}
+test <- sum(str_detect(d0$Interventions,c("iagnos", "test")))
+valueBox(test, 
+         # icon = "fa-tablets", 
+         color = pal.Funded.Bys[3])
+```
+
+### Drugs
+
+```{r}
+drug <- sum(str_detect(d0$Interventions,"Drug"))
+valueBox(drug, 
+         # icon = "fa-tablets", 
+         color = pal.Funded.Bys[3])
+```
+
+### Others
+
+```{r}
+other <- table(d1$Study.Type.b)['Interventional']-(drug+test+vaccine)
+valueBox(other, 
+         # icon = "fa-tablets", 
+         color = pal.Funded.Bys[3])
+```
+
+Row
+-------------------------------------
+
+### Distribution of study phases within interventional clinical trials.
+
+```{r}
+t <- table(d1[d1$Study.Type=='Interventional',]$Phases) %>%
+  as.data.frame() 
+
+ggplot(data=t, aes(x=Var1, y=Freq)) +
+  geom_bar(stat="identity", position=position_dodge(), fill = pal.Funded.Bys[3]) +
+  geom_text(aes(label=Freq), vjust=-0.5, color="grey30",
+            position = position_dodge(0.9), size=3.5) +
+  theme(axis.text.x = element_text(angle=0,vjust=1), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        legend.position = "bottom") +
+  labs(y = "",
+       x = "")
+```
+
+
+Row
+-------------------------------------
+
+### Distribution of study phases according to funding.
+
+```{r}
+t <- round(prop.table(table(d1[d1$Study.Type=='Interventional',]$Phases,
+                            d1[d1$Study.Type=='Interventional',]$Funded.Bys.b), 2)*100, 1) %>%
+  as.data.frame() %>%
+  filter(Var1 != "") %>%
+  mutate(Freq = if_else(Freq ==0, 0.001, Freq))
+
+ggplot(data=t, aes(x=Var1, y=Freq, fill=Var2)) +
+  geom_bar(stat="identity", position=position_dodge(), col="white") +
+  geom_text(aes(label=sprintf("%0.1f", round(Freq, digits = 1))),
+            vjust=-0.5,
+            color="grey30",
+            position = position_dodge(0.9), size=2.5) +
+  theme(axis.text.x = element_text(angle=0,vjust=1), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        legend.position = "top") +
+  labs(y = "",
+       x = "",
+       fill = "") +
+  scale_fill_manual(values=c(pal.Funded.Bys[2],
+                             pal.Funded.Bys[1])) 
+```
+
+Row
+-------------------------------------
+
+### Industry
+
+```{r}
+ind <- table(d1[d1$Study.Type.b=="Interventional",]$Funded.Bys.b)['Industry']
+valueBox(ind, color = pal.Funded.Bys[2])
+```
+
+### Other
+
+```{r}
+oth <- table(d1[d1$Study.Type.b=="Interventional",]$Funded.Bys.b)['Other']
+valueBox(oth, color = pal.Funded.Bys[1])
+```
+
+
+Row
+-------------------------------------
+
+### Tested treatments in Phase 2 and 2|3 trials.
+```{r}
+library(data.table)
+d2 <- d1 %>%
+  filter(Study.Type=="Interventional" & Phases %in% c("Phase 2"," Phase 2|3"),
+         Interventions %like% "Drug:")  %>%
+  select(Interventions) 
+
+text <- as.vector(d2$Interventions) 
+
+text2 <- gsub(x=text, pattern=c("\\|"), replacement = " ")
+text2 <- gsub(x=text2, pattern=c("\\:"), replacement = " ")
+
+library(tm)
+library(wordcloud)
+
+docs <- Corpus(VectorSource(text2))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+# docs <- tm_map(docs, toSpace, "/")
+# docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+docs <- tm_map(docs, toSpace, "\\:")
+
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+# Remove numbers
+#docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+my.stopwords <- c("care",
+                  "continuation",
+                  "discontinuation",
+                  "drug",
+                  "drugs",
+                  "oral",
+                  "placebo",
+                  "practice",
+                  "standard",
+                  "tablet",
+                  "tablets",
+                  "therapy",
+                  "treatment",
+                  "usual")
+docs <- tm_map(docs, removeWords, my.stopwords) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+set.seed(1234)
+wordcloud(words = d$word, 
+          freq = d$freq, 
+          min.freq = 2,
+          max.words=200, 
+          random.order=FALSE, 
+          #rot.per=0.35, 
+          scale=c(2,0.25)*1.25,
+          colors=brewer.pal(8,"Paired"))
+```
+
+Row
+-------------------------------------
+
+### Tested treatments in Phase 3 trials.
+
+```{r}
+library(data.table)
+d2 <- d1 %>%
+  filter(Study.Type=="Interventional" & Phases=="Phase 3",
+         Interventions %like% "Drug:")  %>%
+  select(Interventions) 
+
+text <- as.vector(d2$Interventions) 
+
+text2 <- gsub(x=text, pattern=c("\\|"), replacement = " ")
+text2 <- gsub(x=text2, pattern=c("\\:"), replacement = " ")
+
+library(tm)
+library(wordcloud)
+
+docs <- Corpus(VectorSource(text2))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+docs <- tm_map(docs, toSpace, "\\:")
+
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+# Remove numbers
+#docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+my.stopwords <- c("care",
+                  "continuation",
+                  "discontinuation",
+                  "drug",
+                  "drugs",
+                  "oral",
+                  "placebo",
+                  "practice",
+                  "standard",
+                  "tablet",
+                  "tablets",
+                  "therapy",
+                  "treatment",
+                  "usual")
+docs <- tm_map(docs, removeWords, my.stopwords) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+set.seed(1234)
+wordcloud(words = d$word, 
+          freq = d$freq, 
+          min.freq = 2,
+          max.words=200, 
+          random.order=FALSE, 
+          #rot.per=0.35, 
+          scale=c(2,0.25)*1.25,
+          colors=brewer.pal(8,"Paired"))
+```
+
+
