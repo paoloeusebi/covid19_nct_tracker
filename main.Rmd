@@ -148,6 +148,7 @@ ggplot(data=t, aes(x=Var1, y=Freq, fill=Var2)) +
        fill = "") +
   scale_fill_manual(values=c(pal.Funded.Bys[2],
                              pal.Funded.Bys[1])) 
+ggsave('figs/phase_by_funding.png')
 ```
 
 Row
@@ -196,6 +197,7 @@ wordcloud(words = d$word,
           #rot.per=0.35, 
           scale=c(2,0.25)*1.25,
           colors=brewer.pal(8,"Paired"))
+ggsave('figs/tested_drugs_phase2.png')
 ```
 
 Row
@@ -227,4 +229,5 @@ wordcloud(words = d$word,
           #rot.per=0.35, 
           scale=c(2,0.25)*1.25,
           colors=brewer.pal(8,"Paired"))
+ggsave('figs/tested_drugs_phase3.png')
 ```

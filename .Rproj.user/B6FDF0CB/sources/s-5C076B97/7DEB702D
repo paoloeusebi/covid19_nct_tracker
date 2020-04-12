@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1586701384543.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "146666177",
+    "id" : "7DEB702D",
+    "lastKnownWriteTime" : 1586702015,
+    "last_content_update" : 1586702015877,
+    "path" : "C:/Users/E619545/OneDrive - UCB/Desktop/misc/data_viz/covid19_nct_tracker/main.Rmd",
+    "project_path" : "main.Rmd",
+    "properties" : {
+        "cursorPosition" : "227,30",
+        "scrollLine" : "208"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
